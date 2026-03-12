@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import structlog
 import redis.asyncio as aioredis
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

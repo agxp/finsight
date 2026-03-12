@@ -66,7 +66,9 @@ class TestEDGARClient:
                     "accessionNumber": ["0001-01", "0001-02", "0001-03", "0001-04"],
                     "filingDate": ["2024-10-30", "2024-08-01", "2024-07-15", "2023-11-01"],
                     "reportDate": ["2024-09-28", "2024-06-29", "2024-07-15", "2023-09-30"],
-                    "primaryDocument": ["aapl-10k.htm", "aapl-10q.htm", "aapl-8k.htm", "aapl-10k-2.htm"],
+                    "primaryDocument": [
+                        "aapl-10k.htm", "aapl-10q.htm", "aapl-8k.htm", "aapl-10k-2.htm"
+                    ],
                 }
             }
         }

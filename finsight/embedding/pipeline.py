@@ -7,7 +7,7 @@ import structlog
 
 from finsight.database.chunk_store import ChunkStore
 from finsight.database.filing_store import FilingStore
-from finsight.domain.types import Filing, FilingChunk, FilingStatus
+from finsight.domain.types import FilingChunk, FilingStatus
 from finsight.embedding.embedder import Embedder
 from finsight.quality.checks import check_embedding, enforce_quality_gate
 from finsight.quality.reporter import log_report

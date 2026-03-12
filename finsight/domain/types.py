@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 
-class FilingStatus(str, Enum):
+class FilingStatus(StrEnum):
     PENDING = "pending"
     INGESTED = "ingested"
     TRANSFORMED = "transformed"
@@ -21,18 +21,18 @@ class FilingStatus(str, Enum):
     FAILED = "failed"
 
 
-class FormType(str, Enum):
+class FormType(StrEnum):
     TEN_K = "10-K"
     TEN_Q = "10-Q"
 
 
-class PipelineStage(str, Enum):
+class PipelineStage(StrEnum):
     INGESTION = "ingestion"
     TRANSFORM = "transform"
     EMBEDDING = "embedding"
 
 
-class Section(str, Enum):
+class Section(StrEnum):
     BUSINESS = "business"
     RISK_FACTORS = "risk_factors"
     MDA = "mda"

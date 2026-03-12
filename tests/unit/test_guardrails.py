@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -16,7 +16,7 @@ def make_tenant(tickers=None) -> Tenant:
         name="test",
         api_key_hash="hash",
         ticker_universe=tickers or ["AAPL", "MSFT"],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 

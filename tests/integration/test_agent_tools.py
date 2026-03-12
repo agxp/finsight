@@ -1,17 +1,18 @@
-from __future__ import annotations
-
 """
 Integration tests for agent tool security boundaries.
 
 Run with: pytest tests/integration/ -v -m integration
 """
 
+from __future__ import annotations
+
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from finsight.agent.tools import AgentTools
 from finsight.domain.types import Tenant
 
 
@@ -19,15 +20,12 @@ from finsight.domain.types import Tenant
 @pytest.mark.integration
 async def test_tool_rejects_out_of_universe_ticker():
     """Tool call with ticker outside tenant universe is rejected."""
-    from finsight.agent.tools import AgentTools
-    from unittest.mock import MagicMock
-
     tenant = Tenant(
         id=uuid.uuid4(),
         name="test",
         api_key_hash="hash",
         ticker_universe=["AAPL", "MSFT"],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     searcher_mock = MagicMock()
@@ -45,15 +43,12 @@ async def test_tool_rejects_out_of_universe_ticker():
 @pytest.mark.integration
 async def test_tool_allows_in_universe_ticker():
     """Tool call with valid ticker proceeds without error."""
-    from finsight.agent.tools import AgentTools
-    from unittest.mock import MagicMock
-
     tenant = Tenant(
         id=uuid.uuid4(),
         name="test",
         api_key_hash="hash",
         ticker_universe=["AAPL", "MSFT"],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     searcher_mock = MagicMock()

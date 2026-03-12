@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Integration tests for the ingestion pipeline.
 Requires: real PostgreSQL with pgvector, real MinIO.
@@ -7,6 +5,8 @@ LLM/EDGAR calls are mocked.
 
 Run with: pytest tests/integration/ -v -m integration
 """
+
+from __future__ import annotations
 
 from datetime import date
 from unittest.mock import AsyncMock

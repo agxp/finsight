@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -16,7 +16,7 @@ def sample_tenant() -> Tenant:
         name="test-tenant",
         api_key_hash="abc123",
         ticker_universe=["AAPL", "MSFT", "GOOGL"],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 

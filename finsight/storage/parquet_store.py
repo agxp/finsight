@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import io
-import uuid
-from datetime import datetime, timezone
 
-import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 

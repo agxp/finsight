@@ -43,7 +43,7 @@ TOOL_DEFINITIONS = [
                 },
                 "section": {
                     "type": "string",
-                    "description": "Filter by section (risk_factors, mda, financials, etc.). Optional.",
+                    "description": "Filter by section (risk_factors, mda, financials, etc.).",
                 },
                 "limit": {
                     "type": "integer",
@@ -57,15 +57,22 @@ TOOL_DEFINITIONS = [
     {
         "name": "get_financial_metrics",
         "description": (
-            "Extract structured financial metrics from a specific filing's MDA or financials section. "
-            "Use for revenue, net income, EPS, margins, guidance, and similar quantitative data."
+            "Extract structured financial metrics from a specific filing's MDA or financials section."
+            " Use for revenue, net income, EPS, margins, guidance, and similar quantitative data."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "ticker": {"type": "string", "description": "Company ticker symbol (e.g. 'AAPL')"},
-                "form_type": {"type": "string", "enum": ["10-K", "10-Q"], "description": "Filing type"},
-                "period_of_report": {"type": "string", "description": "Period end date (YYYY-MM-DD)"},
+                "form_type": {
+                    "type": "string",
+                    "enum": ["10-K", "10-Q"],
+                    "description": "Filing type",
+                },
+                "period_of_report": {
+                    "type": "string",
+                    "description": "Period end date (YYYY-MM-DD)",
+                },
                 "metrics": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -189,7 +196,8 @@ class AgentTools:
         if ticker not in [t.upper() for t in self._tenant.ticker_universe]:
             raise TickerNotInUniverseError(ticker)
 
-        query = f"{', '.join(inputs['metrics'])} for {ticker} {inputs['form_type']} {inputs['period_of_report']}"
+        metrics_str = ", ".join(inputs["metrics"])
+        query = f"{metrics_str} for {ticker} {inputs['form_type']} {inputs['period_of_report']}"
         chunks = await self._searcher.search(
             query,
             self._tenant,
@@ -204,12 +212,18 @@ class AgentTools:
 
         if not chunks:
             chunks = await self._searcher.search(
-                query, self._tenant, tickers=[ticker], form_types=[inputs["form_type"]], section="mda", limit=5
+                query,
+                self._tenant,
+                tickers=[ticker],
+                form_types=[inputs["form_type"]],
+                section="mda",
+                limit=5,
             )
             self._retrieved_chunks.extend(chunks)
 
         if not chunks:
-            return f"No financial data found for {ticker} {inputs['form_type']} {inputs['period_of_report']}", {}
+            period = inputs["period_of_report"]
+            return f"No financial data found for {ticker} {inputs['form_type']} {period}", {}
 
         combined = "\n\n".join(c.content for c in chunks[:3])
         return combined[:2000], {

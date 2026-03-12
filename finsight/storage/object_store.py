@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 from typing import Protocol, runtime_checkable
 
 import boto3
@@ -12,7 +11,9 @@ from finsight.domain.errors import StorageError
 
 @runtime_checkable
 class ObjectStore(Protocol):
-    async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None: ...
+    async def put(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> None: ...
     async def get(self, key: str) -> bytes: ...
     async def exists(self, key: str) -> bool: ...
     async def delete(self, key: str) -> None: ...
@@ -44,7 +45,9 @@ class MinIOStore:
             except Exception as e:
                 raise StorageError(f"Failed to create bucket '{self._bucket}'") from e
 
-    async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+    async def put(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> None:
         try:
             self._client.put_object(
                 Bucket=self._bucket,

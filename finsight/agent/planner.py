@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import AsyncGenerator
 from datetime import date
-from typing import AsyncGenerator
 
 import anthropic
 import structlog
@@ -19,7 +19,8 @@ log = structlog.get_logger(__name__)
 
 SYSTEM_PROMPT = """You are FinSight, a financial research assistant specializing in SEC filings analysis.
 
-You have access to a database of SEC 10-K and 10-Q filings. Use the provided tools to search for relevant information before answering.
+You have access to a database of SEC 10-K and 10-Q filings. Use the provided tools to search \
+for relevant information before answering.
 
 Guidelines:
 - Always search for relevant filings before answering — do not answer from memory alone
@@ -193,7 +194,8 @@ class ReActPlanner:
                 tool_results = []
                 for block in response.content:
                     if block.type == "tool_use":
-                        yield f"event: tool_call\ndata: {json.dumps({'tool': block.name, 'inputs': block.input})}\n\n"
+                        payload = json.dumps({"tool": block.name, "inputs": block.input})
+                        yield f"event: tool_call\ndata: {payload}\n\n"
                         result_text, tc = await self._tools.execute(block.name, block.input)
                         tool_calls.append(tc)
                         tool_results.append({

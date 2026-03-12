@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 import asyncpg
 
@@ -27,7 +27,8 @@ class FilingStore:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                INSERT INTO filings (accession_number, ticker, cik, form_type, period_of_report, filed_date)
+                INSERT INTO filings
+                    (accession_number, ticker, cik, form_type, period_of_report, filed_date)
                 VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (accession_number) DO NOTHING
                 RETURNING *
@@ -108,8 +109,11 @@ class FilingStore:
         async with self._pool.acquire() as conn:
             count = await conn.fetchval(f"SELECT COUNT(*) FROM filings {where}", *params)
             params.extend([page_size, offset])
+            limit_idx = len(params) - 1
+            offset_idx = len(params)
             rows = await conn.fetch(
-                f"SELECT * FROM filings {where} ORDER BY filed_date DESC LIMIT ${len(params)-1} OFFSET ${len(params)}",
+                f"SELECT * FROM filings {where} ORDER BY filed_date DESC"
+                f" LIMIT ${limit_idx} OFFSET ${offset_idx}",
                 *params,
             )
         return [_row_to_filing(r) for r in rows], count

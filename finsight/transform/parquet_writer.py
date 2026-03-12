@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from finsight.domain.types import Filing, ParquetChunkRow
 from finsight.storage.parquet_store import ParquetStore, make_parquet_key
@@ -39,7 +39,7 @@ async def write_chunks_to_parquet(
             has_tables=chunk.has_tables,
             quality_score=1.0,
             pipeline_version=PIPELINE_VERSION,
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
         )
         for chunk in chunks
     ]
