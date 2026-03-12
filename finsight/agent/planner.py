@@ -4,6 +4,7 @@ import json
 import time
 from collections.abc import AsyncGenerator
 from datetime import date
+from typing import Any, cast
 
 import anthropic
 import structlog
@@ -60,7 +61,7 @@ class ReActPlanner:
             ticker_universe=", ".join(self._tenant.ticker_universe),
         )
 
-        messages = [{"role": "user", "content": query}]
+        messages: list[Any] = [{"role": "user", "content": query}]
         from finsight.domain.types import ToolCall
         tool_calls: list[ToolCall] = []
         total_input_tokens = 0
@@ -73,15 +74,15 @@ class ReActPlanner:
                 model=self._model,
                 max_tokens=4096,
                 system=system,
-                tools=TOOL_DEFINITIONS,
-                messages=messages,
+                tools=cast(Any, TOOL_DEFINITIONS),
+                messages=cast(Any, messages),
             )
 
             total_input_tokens += response.usage.input_tokens
             total_output_tokens += response.usage.output_tokens
 
             if response.stop_reason == "tool_use":
-                messages.append({"role": "assistant", "content": response.content})
+                messages.append({"role": "assistant", "content": cast(Any, response.content)})
                 tool_results = []
                 for block in response.content:
                     if block.type == "tool_use":
@@ -170,7 +171,7 @@ class ReActPlanner:
             ticker_universe=", ".join(self._tenant.ticker_universe),
         )
 
-        messages = [{"role": "user", "content": query}]
+        messages: list[Any] = [{"role": "user", "content": query}]
         from finsight.domain.types import ToolCall
         tool_calls: list[ToolCall] = []
         total_input_tokens = 0
@@ -182,15 +183,15 @@ class ReActPlanner:
                 model=self._model,
                 max_tokens=4096,
                 system=system,
-                tools=TOOL_DEFINITIONS,
-                messages=messages,
+                tools=cast(Any, TOOL_DEFINITIONS),
+                messages=cast(Any, messages),
             )
 
             total_input_tokens += response.usage.input_tokens
             total_output_tokens += response.usage.output_tokens
 
             if response.stop_reason == "tool_use":
-                messages.append({"role": "assistant", "content": response.content})
+                messages.append({"role": "assistant", "content": cast(Any, response.content)})
                 tool_results = []
                 for block in response.content:
                     if block.type == "tool_use":
