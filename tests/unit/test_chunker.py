@@ -10,7 +10,9 @@ def make_section(key: str, content: str) -> ParsedSection:
 
 def test_chunk_short_section():
     """Short section produces at least one chunk."""
-    sections = [make_section("mda", "Apple reported strong revenue growth. Net income increased YOY.")]
+    sections = [
+        make_section("mda", "Apple reported strong revenue growth. Net income increased YOY.")
+    ]
     chunks = chunk_sections(sections, max_tokens=400, overlap_tokens=50, min_tokens=5)
     assert len(chunks) >= 1
     assert chunks[0].section == "mda"

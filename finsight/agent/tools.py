@@ -57,7 +57,8 @@ TOOL_DEFINITIONS = [
     {
         "name": "get_financial_metrics",
         "description": (
-            "Extract structured financial metrics from a specific filing's MDA or financials section."
+            "Extract structured financial metrics from a specific filing's"
+            " MDA or financials section."
             " Use for revenue, net income, EPS, margins, guidance, and similar quantitative data."
         ),
         "input_schema": {
@@ -76,7 +77,9 @@ TOOL_DEFINITIONS = [
                 "metrics": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Metric names to extract (e.g. ['revenue', 'net_income', 'eps'])",
+                    "description": (
+                        "Metric names to extract (e.g. ['revenue', 'net_income', 'eps'])"
+                    ),
                 },
             },
             "required": ["ticker", "form_type", "period_of_report", "metrics"],

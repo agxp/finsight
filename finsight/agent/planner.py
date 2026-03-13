@@ -18,7 +18,8 @@ from finsight.domain.types import AgentResponse, Tenant
 
 log = structlog.get_logger(__name__)
 
-SYSTEM_PROMPT = """You are FinSight, a financial research assistant specializing in SEC filings analysis.
+SYSTEM_PROMPT = """\
+You are FinSight, a financial research assistant specializing in SEC filings analysis.
 
 You have access to a database of SEC 10-K and 10-Q filings. Use the provided tools to search \
 for relevant information before answering.
