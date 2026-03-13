@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import uuid
 
+import httpx
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from finsight.api.middleware.auth import get_current_tenant
+from finsight.config import get_settings
 from finsight.database.filing_store import FilingStore
 from finsight.domain.types import Filing, FilingListResponse, FilingStatus, IngestRequest, Tenant
 
 router = APIRouter(prefix="/v1/filings")
+log = structlog.get_logger(__name__)
+
+_BACKFILL_DAG_ID = "edgar_backfill"
 
 
 @router.get("", response_model=FilingListResponse)
@@ -67,7 +73,6 @@ async def get_filing(
 @router.post("/ingest", status_code=status.HTTP_202_ACCEPTED)
 async def trigger_ingest(
     body: IngestRequest,
-    request: Request,
     tenant: Tenant = Depends(get_current_tenant),
 ) -> dict:
     if body.ticker.upper() not in [t.upper() for t in tenant.ticker_universe]:
@@ -76,9 +81,58 @@ async def trigger_ingest(
             detail=f"Ticker '{body.ticker}' not in your authorized universe",
         )
 
+    settings = get_settings()
+    dag_run_id = f"api_{body.ticker.lower()}_{body.date_from}_{body.date_to}"
+    payload = {
+        "dag_run_id": dag_run_id,
+        "conf": {
+            "tickers": [body.ticker.upper()],
+            "date_from": body.date_from,
+            "date_to": body.date_to,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                f"{settings.airflow_api_url}/dags/{_BACKFILL_DAG_ID}/dagRuns",
+                json=payload,
+                auth=(settings.airflow_api_user, settings.airflow_api_password),
+            )
+        if r.status_code == 409:
+            # DAG run with this ID already exists — idempotent, treat as accepted.
+            log.info(
+                "ingest.dag_run_already_exists",
+                dag_run_id=dag_run_id,
+                ticker=body.ticker,
+            )
+        elif r.status_code not in (200, 201):
+            log.error(
+                "ingest.airflow_trigger_failed",
+                status=r.status_code,
+                body=r.text,
+                ticker=body.ticker,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Airflow returned {r.status_code}: {r.text}",
+            )
+        else:
+            log.info(
+                "ingest.dag_run_triggered",
+                dag_run_id=dag_run_id,
+                ticker=body.ticker,
+            )
+    except httpx.RequestError as exc:
+        log.error("ingest.airflow_unreachable", error=str(exc), ticker=body.ticker)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Airflow is unreachable. Is it running?",
+        ) from exc
+
     return {
         "status": "accepted",
-        "message": f"Ingestion queued for {body.ticker} from {body.date_from} to {body.date_to}",
+        "dag_run_id": dag_run_id,
         "ticker": body.ticker,
         "date_from": body.date_from,
         "date_to": body.date_to,

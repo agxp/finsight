@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     embedding_batch_size: int = Field(default=20, description="Chunks per embedding batch")
     agent_max_iterations: int = Field(default=8, description="Max ReAct loop iterations")
 
+    # Airflow
+    airflow_api_url: str = Field(
+        default="http://localhost:8080/api/v1",
+        description="Airflow REST API base URL",
+    )
+    airflow_api_user: str = Field(default="airflow", description="Airflow basic-auth username")
+    airflow_api_password: str = Field(default="airflow", description="Airflow basic-auth password")
+
     # EDGAR
     edgar_user_agent: str = Field(
         default="FinSight research@example.com",
