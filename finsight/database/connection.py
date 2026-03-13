@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncpg
+from pgvector.asyncpg import register_vector
 
 from finsight.config import get_settings
 
@@ -16,6 +17,7 @@ async def get_pool() -> asyncpg.Pool:
             min_size=2,
             max_size=10,
             command_timeout=60,
+            init=register_vector,
         )
     return _pool
 

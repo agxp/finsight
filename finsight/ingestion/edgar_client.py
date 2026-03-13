@@ -204,11 +204,20 @@ class EDGARClient:
                 )
                 if idx_r.status_code == 200:
                     idx_data = idx_r.json()
+                    candidates = []
                     for item in idx_data.get("directory", {}).get("item", []):
                         name = item.get("name", "")
-                        if name.endswith(".htm") or name.endswith(".html"):
-                            urls_to_try.insert(0, index_url + name)
-                            break
+                        if (name.endswith(".htm") or name.endswith(".html")) and \
+                                "index" not in name.lower():
+                            try:
+                                size = int(item.get("size", 0))
+                            except (ValueError, TypeError):
+                                size = 0
+                            candidates.append((size, index_url + name))
+                    # prefer the largest non-index htm (the actual filing document)
+                    if candidates:
+                        candidates.sort(reverse=True)
+                        urls_to_try.insert(0, candidates[0][1])
             except Exception as exc:
                 log.debug(
                     "edgar.index_json_fetch_failed",

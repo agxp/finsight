@@ -50,28 +50,58 @@ SEC EDGAR ──► FilingDownloader ──► MinIO (raw HTML)
 ## Quick start
 
 ```bash
-# Start all services
-docker-compose up -d
+git clone <repo> && cd finsight
+cp .env.example .env        # set ANTHROPIC_API_KEY and OPENAI_API_KEY
+docker-compose up
+```
 
-# Apply migrations + seed dev tenant
-cp .env.example .env   # add ANTHROPIC_API_KEY and OPENAI_API_KEY
-source .env
-make migrate && make seed   # prints API key
+That's it. On first boot `docker-compose` will:
+1. Start Postgres, MinIO, Redis
+2. Run DB migrations and create the MinIO bucket (`finsight-init`)
+3. Seed a dev tenant and print your API key
+4. Start the FastAPI app, Airflow webserver, and scheduler
 
-# Run API
-make run-api   # http://localhost:8000
+**Get your API key:**
+```bash
+docker-compose logs finsight-init | grep "fs_"
+```
 
-# Trigger backfill for AAPL (via Airflow or directly)
-airflow dags trigger edgar_backfill \
-  --conf '{"tickers": ["AAPL"], "date_from": "2023-01-01", "date_to": "2024-12-31"}'
+**Open the UI:** http://localhost:8000 (redirects to `/ui`)
 
-# Query the agent
+**Ingest filings** — use the Filings tab in the UI, or via curl:
+```bash
+curl -X POST http://localhost:8000/v1/filings/ingest \
+  -H "Authorization: Bearer fs_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"ticker": "AAPL", "date_from": "2023-01-01", "date_to": "2023-12-31"}'
+```
+
+The ingest DAG runs automatically. Watch progress in the Filings tab — filings move through `ingested → transformed → embedded`. Once `embedded`, the agent can answer questions about them.
+
+**Query the agent:**
+```bash
 curl -X POST http://localhost:8000/v1/query \
   -H "Authorization: Bearer fs_YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"query": "What were the main risk factors Apple cited in their most recent 10-K?"}'
+  -d '{"query": "What were the main risk factors Apple cited in their most recent 10-K?", "stream": false}'
+```
 
-# Run tests
+**Other services:**
+| Service | URL |
+|---------|-----|
+| API + UI | http://localhost:8000 |
+| Airflow | http://localhost:8081 (admin / admin) |
+| MinIO console | http://localhost:9001 (minio / minio123) |
+
+**Re-running is safe** — all init steps are idempotent. If you reset and want a fresh API key:
+```bash
+docker-compose exec postgres psql -U finsight -d finsight -c "DELETE FROM tenants WHERE name = 'dev-tenant';"
+docker-compose restart finsight-init
+docker-compose logs finsight-init | grep "fs_"
+```
+
+**Run tests:**
+```bash
 make test-unit
 ```
 
@@ -99,6 +129,6 @@ make test-unit
 
 **DuckDB over Spark:** in-process Parquet queries with SQL. No cluster needed at this scale.
 
-**`ON CONFLICT DO NOTHING` as idempotency primitive:** multiple workers can process concurrently; re-running backfills is always safe. Mirrors DocPulse's `FOR UPDATE SKIP LOCKED` pattern.
+**`ON CONFLICT DO NOTHING` as idempotency primitive:** multiple workers can process concurrently; re-running backfills is always safe.
 
 **Deterministic guardrails:** input/output validation via regex and content-matching rather than a second LLM call. Faster, more predictable, easier to audit — important in a financial context.

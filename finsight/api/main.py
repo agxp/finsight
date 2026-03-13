@@ -4,6 +4,8 @@ import redis.asyncio as aioredis
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from finsight.api.middleware.logging import LoggingMiddleware
 from finsight.api.middleware.rate_limit import RateLimiter
@@ -66,6 +68,12 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(filings.router)
     app.include_router(agent.router)
+
+    app.mount("/ui", StaticFiles(directory="/app/frontend", html=True), name="frontend")
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse(url="/ui")
 
     return app
 

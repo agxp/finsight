@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinSight</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent-dim: #2a4a8a;
+    --text: #e2e8f0;
+    --text-dim: #8892a4;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --radius: 8px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-dim); display: inline-block; margin-right: 6px;
+  }
+  .status-dot.ok { background: var(--green); }
+  .status-dot.err { background: var(--red); }
+  #status-label { font-size: 12px; color: var(--text-dim); }
+
+  /* ── Auth bar ── */
+  #auth-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  #auth-bar label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+  #api-key-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: monospace;
+    max-width: 420px;
+  }
+  #api-key-input:focus { outline: none; border-color: var(--accent); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 10px 20px 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 8px 16px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-dim);
+    border: 1px solid transparent;
+    border-bottom: none;
+    user-select: none;
+  }
+  .tab.active {
+    background: var(--bg);
+    color: var(--text);
+    border-color: var(--border);
+    border-bottom-color: var(--bg);
+  }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── Panels ── */
+  .panel { display: none; flex: 1; overflow: hidden; }
+  .panel.active { display: flex; }
+
+  /* ── Query panel ── */
+  #panel-query {
+    flex-direction: column;
+  }
+  #chat-history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .msg {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 820px;
+  }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+  .msg-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .msg.user .msg-label { text-align: right; }
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    line-height: 1.6;
+  }
+  .msg.user .msg-bubble {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+  }
+  .msg.assistant .msg-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+  }
+  .msg-bubble.streaming::after {
+    content: "▋";
+    animation: blink 1s step-end infinite;
+    color: var(--accent);
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* tool calls */
+  .tool-calls { display: flex; flex-direction: column; gap: 4px; }
+  .tool-call {
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    font-family: monospace;
+  }
+  .tool-call-name { color: var(--yellow); }
+
+  /* sources */
+  .sources { display: flex; flex-direction: column; gap: 4px; }
+  .source {
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+  }
+  .source-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .source-ticker { font-weight: 600; color: var(--accent); }
+  .source-meta { color: var(--text-dim); }
+  .source-excerpt { color: var(--text-dim); font-size: 11px; margin-top: 4px; line-height: 1.5; }
+
+  /* stats */
+  .msg-stats { font-size: 11px; color: var(--text-dim); }
+
+  /* query input area */
+  #query-form {
+    display: flex;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  #query-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: var(--font);
+    resize: none;
+    max-height: 140px;
+  }
+  #query-input:focus { outline: none; border-color: var(--accent); }
+
+  /* stream toggle */
+  .stream-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .stream-toggle input { accent-color: var(--accent); cursor: pointer; }
+
+  /* ── Filings panel ── */
+  #panel-filings {
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .filings-toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-end;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .field input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+
+  #filings-table-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:hover td { background: var(--surface2); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-completed { background: #064e3b; color: var(--green); }
+  .badge-pending   { background: #78350f; color: var(--yellow); }
+  .badge-failed    { background: #7f1d1d; color: var(--red); }
+  .badge-processing { background: #1e3a5f; color: var(--accent); }
+
+  /* ── Buttons ── */
+  button, .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  button:hover, .btn:hover { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    max-width: 340px;
+    z-index: 999;
+  }
+  #toast.show { opacity: 1; }
+  #toast.err { border-color: var(--red); color: var(--red); }
+  #toast.ok  { border-color: var(--green); color: var(--green); }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty h3 { font-size: 15px; margin-bottom: 6px; color: var(--text); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Fin<span>Sight</span></div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-label">checking…</span>
+  </div>
+</header>
+
+<div id="auth-bar">
+  <label for="api-key-input">API Key</label>
+  <input id="api-key-input" type="password" placeholder="fs_…" autocomplete="off" spellcheck="false">
+  <button class="btn-ghost btn-sm" onclick="saveKey()">Save</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('query')">Query</div>
+  <div class="tab" onclick="switchTab('filings')">Filings</div>
+</div>
+
+<!-- Query panel -->
+<div id="panel-query" class="panel active">
+  <div id="chat-history">
+    <div class="empty">
+      <h3>Ask a financial research question</h3>
+      <p>e.g. "What were Apple's revenue and operating margins in fiscal 2023?"</p>
+    </div>
+  </div>
+  <form id="query-form" onsubmit="submitQuery(event)">
+    <textarea id="query-input" rows="1" placeholder="Ask about any SEC filing…"
+      onkeydown="handleKey(event)"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+    <label class="stream-toggle">
+      <input type="checkbox" id="stream-toggle" checked> Stream
+    </label>
+    <button id="send-btn" type="submit">Send</button>
+  </form>
+</div>
+
+<!-- Filings panel -->
+<div id="panel-filings" class="panel">
+  <div class="filings-toolbar">
+    <div class="field">
+      <label>Ticker</label>
+      <input id="ingest-ticker" placeholder="AAPL" style="width:90px">
+    </div>
+    <div class="field">
+      <label>Date from</label>
+      <input id="ingest-from" type="date" value="2023-01-01">
+    </div>
+    <div class="field">
+      <label>Date to</label>
+      <input id="ingest-to" type="date" value="2023-12-31">
+    </div>
+    <button onclick="triggerIngest()" style="margin-top:auto">Trigger Ingest</button>
+    <button class="btn-ghost" onclick="loadFilings()" style="margin-top:auto">Refresh</button>
+  </div>
+  <div id="filings-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th><th>Form</th><th>Period</th><th>Filed</th><th>Status</th><th>Accession</th>
+        </tr>
+      </thead>
+      <tbody id="filings-tbody">
+        <tr><td colspan="6"><div class="empty"><h3>No filings loaded</h3><p>Save your API key and click Refresh.</p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const API = '';  // same origin
+let abortCtrl = null;
+
+// ── API key ────────────────────────────────────────────────────────────────
+const keyInput = document.getElementById('api-key-input');
+keyInput.value = localStorage.getItem('finsight_key') || '';
+
+function saveKey() {
+  localStorage.setItem('finsight_key', keyInput.value.trim());
+  toast('API key saved', 'ok');
+  checkHealth();
+}
+function getKey() { return keyInput.value.trim() || localStorage.getItem('finsight_key') || ''; }
+
+keyInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveKey(); } });
+
+// ── Health ─────────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const dot = document.getElementById('status-dot');
+  const lbl = document.getElementById('status-label');
+  try {
+    const r = await fetch(`${API}/ready`);
+    const d = await r.json();
+    const ok = d.status === 'ok';
+    dot.className = 'status-dot ' + (ok ? 'ok' : 'err');
+    lbl.textContent = ok ? 'ready' : 'degraded';
+  } catch {
+    dot.className = 'status-dot err';
+    lbl.textContent = 'offline';
+  }
+}
+checkHealth();
+setInterval(checkHealth, 30000);
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['query','filings'][i] === name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'filings') loadFilings();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3000);
+}
+
+// ── Auth header ────────────────────────────────────────────────────────────
+function authHeaders(extra = {}) {
+  const k = getKey();
+  if (!k) { toast('Set your API key first', 'err'); throw new Error('no key'); }
+  return { 'Authorization': `Bearer ${k}`, 'Content-Type': 'application/json', ...extra };
+}
+
+// ── Query ──────────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('query-form').requestSubmit(); }
+}
+
+async function submitQuery(e) {
+  e.preventDefault();
+  const input = document.getElementById('query-input');
+  const q = input.value.trim();
+  if (!q) return;
+  const stream = document.getElementById('stream-toggle').checked;
+
+  // clear empty state
+  const history = document.getElementById('chat-history');
+  const empty = history.querySelector('.empty');
+  if (empty) empty.remove();
+
+  appendMsg('user', q);
+  input.value = '';
+  input.style.height = 'auto';
+
+  document.getElementById('send-btn').disabled = true;
+  if (stream) await runStream(q, history);
+  else await runFull(q, history);
+  document.getElementById('send-btn').disabled = false;
+}
+
+function appendMsg(role, text) {
+  const history = document.getElementById('chat-history');
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  msg.innerHTML = `
+    <div class="msg-label">${role === 'user' ? 'You' : 'FinSight'}</div>
+    <div class="msg-bubble">${escHtml(text)}</div>`;
+  history.appendChild(msg);
+  history.scrollTop = history.scrollHeight;
+  return msg;
+}
+
+function assistantShell() {
+  const history = document.getElementById('chat-history');
+  const msg = document.createElement('div');
+  msg.className = 'msg assistant';
+  const toolsEl = document.createElement('div');
+  toolsEl.className = 'tool-calls';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble streaming';
+  msg.appendChild(toolsEl);
+  msg.appendChild(bubble);
+  history.appendChild(msg);
+  history.scrollTop = history.scrollHeight;
+  return { msg, bubble, toolsEl };
+}
+
+async function runStream(query, history) {
+  const { msg, bubble, toolsEl } = assistantShell();
+  let answer = '';
+  try {
+    const resp = await fetch(`${API}/v1/query`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ query, stream: true }),
+    });
+    if (!resp.ok) { const t = await resp.text(); throw new Error(t); }
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (line.startsWith('event: tool_call')) continue;
+        if (line.startsWith('event: done')) continue;
+        if (line.startsWith('event: error')) continue;
+        if (line.startsWith('data: ')) {
+          const payload = line.slice(6);
+          // try to parse as JSON (done / tool_call / error events)
+          try {
+            const obj = JSON.parse(payload);
+            if (obj.tool) {
+              // tool call notification
+              const tc = document.createElement('div');
+              tc.className = 'tool-call';
+              tc.innerHTML = `<span class="tool-call-name">${escHtml(obj.tool)}</span> ${escHtml(JSON.stringify(obj.inputs))}`;
+              toolsEl.appendChild(tc);
+            } else if (obj.answer !== undefined) {
+              // done event — render sources + stats
+              bubble.classList.remove('streaming');
+              renderSources(msg, obj.sources || []);
+              renderStats(msg, obj);
+            } else if (obj.error) {
+              bubble.classList.remove('streaming');
+              bubble.textContent = 'Error: ' + obj.error;
+            }
+          } catch {
+            // plain text word
+            answer += payload;
+            bubble.textContent = answer;
+            history.scrollTop = history.scrollHeight;
+          }
+        }
+      }
+    }
+    bubble.classList.remove('streaming');
+  } catch (err) {
+    bubble.classList.remove('streaming');
+    bubble.textContent = 'Error: ' + err.message;
+    toast(err.message, 'err');
+  }
+}
+
+async function runFull(query, history) {
+  const { msg, bubble, toolsEl } = assistantShell();
+  bubble.textContent = 'Thinking…';
+  try {
+    const resp = await fetch(`${API}/v1/query`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ query, stream: false }),
+    });
+    if (!resp.ok) { const t = await resp.text(); throw new Error(t); }
+    const d = await resp.json();
+    bubble.classList.remove('streaming');
+    bubble.textContent = d.answer;
+    (d.tool_calls || []).forEach(tc => {
+      const el = document.createElement('div');
+      el.className = 'tool-call';
+      el.innerHTML = `<span class="tool-call-name">${escHtml(tc.tool_name)}</span> ${escHtml(JSON.stringify(tc.inputs))}`;
+      toolsEl.insertBefore(el, toolsEl.firstChild);
+    });
+    renderSources(msg, d.sources || []);
+    renderStats(msg, d);
+  } catch (err) {
+    bubble.classList.remove('streaming');
+    bubble.textContent = 'Error: ' + err.message;
+    toast(err.message, 'err');
+  }
+}
+
+function renderSources(msg, sources) {
+  if (!sources.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'sources';
+  sources.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'source';
+    el.innerHTML = `
+      <div class="source-header">
+        <span class="source-ticker">${escHtml(s.ticker)} · ${escHtml(s.form_type)}</span>
+        <span class="source-meta">${escHtml(s.period_of_report)} · score ${s.score.toFixed(3)}</span>
+      </div>
+      <div class="source-meta">${escHtml(s.section)}</div>
+      <div class="source-excerpt">${escHtml((s.content || '').slice(0, 240))}…</div>`;
+    wrap.appendChild(el);
+  });
+  msg.appendChild(wrap);
+}
+
+function renderStats(msg, d) {
+  const el = document.createElement('div');
+  el.className = 'msg-stats';
+  el.textContent = `${d.input_tokens ?? '?'} in · ${d.output_tokens ?? '?'} out · ${d.latency_ms ?? '?'}ms`;
+  msg.appendChild(el);
+}
+
+// ── Filings ────────────────────────────────────────────────────────────────
+async function loadFilings() {
+  const tbody = document.getElementById('filings-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-dim);padding:20px">Loading…</td></tr>';
+  try {
+    const resp = await fetch(`${API}/v1/filings?page_size=50`, { headers: authHeaders() });
+    if (!resp.ok) { const t = await resp.text(); throw new Error(t); }
+    const d = await resp.json();
+    if (!d.filings.length) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><h3>No filings yet</h3><p>Trigger an ingest above.</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.filings.map(f => `
+      <tr>
+        <td><strong>${escHtml(f.ticker)}</strong></td>
+        <td>${escHtml(f.form_type)}</td>
+        <td>${escHtml(f.period_of_report)}</td>
+        <td>${escHtml(f.filed_date)}</td>
+        <td>${statusBadge(f.status)}</td>
+        <td style="font-family:monospace;font-size:11px;color:var(--text-dim)">${escHtml(f.accession_number)}</td>
+      </tr>`).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:20px">${escHtml(err.message)}</td></tr>`;
+    toast(err.message, 'err');
+  }
+}
+
+async function triggerIngest() {
+  const ticker = document.getElementById('ingest-ticker').value.trim().toUpperCase();
+  const date_from = document.getElementById('ingest-from').value;
+  const date_to = document.getElementById('ingest-to').value;
+  if (!ticker || !date_from || !date_to) { toast('Fill in ticker and dates', 'err'); return; }
+  try {
+    const resp = await fetch(`${API}/v1/filings/ingest`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ ticker, date_from, date_to }),
+    });
+    if (!resp.ok) { const t = await resp.text(); throw new Error(t); }
+    const d = await resp.json();
+    toast(`Ingest triggered: ${d.dag_run_id}`, 'ok');
+    setTimeout(loadFilings, 1500);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+function statusBadge(s) {
+  const cls = { completed:'badge-completed', pending:'badge-pending', failed:'badge-failed', processing:'badge-processing' }[s] || '';
+  return `<span class="badge ${cls}">${escHtml(s)}</span>`;
+}
+
+// ── Util ───────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

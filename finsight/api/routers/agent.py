@@ -12,7 +12,7 @@ from finsight.domain.types import AgentResponse, QueryRequest, Tenant
 router = APIRouter(prefix="/v1")
 
 
-@router.post("/query")
+@router.post("/query", response_model=None)
 async def query_agent(
     body: QueryRequest,
     request: Request,

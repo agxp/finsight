@@ -47,7 +47,8 @@ def check_transform(
     chunk_count: int,
 ) -> QualityReport:
     section_count = len(sections_found)
-    mda_present = "mda" in sections_found
+    # 10-K: mda = item7; 10-Q: item2 maps to "properties" in the section map
+    mda_present = bool(sections_found & {"mda", "properties"})
 
     checks: list[QualityCheck] = [
         QualityCheck(

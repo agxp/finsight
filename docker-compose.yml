@@ -1,16 +1,26 @@
 version: "3.9"
 
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.9.0
+  build:
+    context: .
+    dockerfile: airflow.Dockerfile
+  env_file:
+    - .env
   environment: &airflow-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://finsight:finsight@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ""
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
     AIRFLOW_CONN_FINSIGHT_POSTGRES: postgresql://finsight:finsight@postgres/finsight
     AIRFLOW_CONN_FINSIGHT_S3: aws://minio:minio123@?endpoint_url=http%3A%2F%2Fminio%3A9000
+    DATABASE_URL: postgresql://finsight:finsight@postgres/finsight
+    MINIO_ENDPOINT: minio:9000
+    MINIO_ACCESS_KEY: minio
+    MINIO_SECRET_KEY: minio123
+    MINIO_BUCKET: finsight
+    MINIO_USE_SSL: "false"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./finsight:/opt/airflow/finsight
@@ -68,24 +78,56 @@ services:
     <<: *airflow-common
     command: webserver
     ports:
-      - "8080:8080"
+      - "8081:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
 
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
 
   airflow-init:
     <<: *airflow-common
+    restart: "no"
     command: >
       bash -c "
         airflow db init &&
-        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true
       "
+
+  finsight-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: bash /app/scripts/docker-init.sh
+    environment:
+      DATABASE_URL: postgresql://finsight:finsight@postgres/finsight
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: finsight
+      MINIO_USE_SSL: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    env_file:
+      - .env
+    restart: "no"
 
   api:
     build:
@@ -100,11 +142,16 @@ services:
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: finsight
+      AIRFLOW_API_URL: http://airflow-webserver:8080/api/v1
+      AIRFLOW_API_USER: admin
+      AIRFLOW_API_PASSWORD: admin
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      finsight-init:
+        condition: service_completed_successfully
     env_file:
       - .env
 
