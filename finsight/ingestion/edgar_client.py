@@ -7,9 +7,12 @@ from dataclasses import dataclass
 from datetime import date
 
 import httpx
+import structlog
 
 from finsight.config import get_settings
 from finsight.domain.errors import EDGARError
+
+log = structlog.get_logger(__name__)
 
 EDGAR_SUBMISSIONS = "https://data.sec.gov/submissions"
 
@@ -206,8 +209,12 @@ class EDGARClient:
                         if name.endswith(".htm") or name.endswith(".html"):
                             urls_to_try.insert(0, index_url + name)
                             break
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug(
+                    "edgar.index_json_fetch_failed",
+                    accession=filing.accession_number,
+                    error=str(exc),
+                )
 
             for url in urls_to_try:
                 if not url:
@@ -216,7 +223,13 @@ class EDGARClient:
                     r = await client.get(url, headers=self._make_headers(), timeout=60)
                     if r.status_code == 200 and len(r.content) > 10_000:
                         return r.content
-                except Exception:
+                except Exception as exc:
+                    log.debug(
+                        "edgar.filing_url_fetch_failed",
+                        url=url,
+                        accession=filing.accession_number,
+                        error=str(exc),
+                    )
                     continue
 
         raise EDGARError(f"Failed to fetch HTML for filing {filing.accession_number}")
